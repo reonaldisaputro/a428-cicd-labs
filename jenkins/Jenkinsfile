@@ -3,6 +3,7 @@ pipeline {
 
   environment {
     CI = 'true'
+    HOST_WS = '/home/dzikri/jenkins_home/workspace/react-app'
   }
 
   stages {
@@ -11,7 +12,7 @@ pipeline {
         sh '''
           docker run --rm \
             -e CI=true \
-            -v "$WORKSPACE:/work" -w /work \
+            -v "$HOST_WS:/work" -w /work \
             node:lts-buster-slim \
             bash -lc "npm install"
         '''
@@ -23,7 +24,7 @@ pipeline {
         sh '''
           docker run --rm \
             -e CI=true \
-            -v "$WORKSPACE:/work" -w /work \
+            -v "$HOST_WS:/work" -w /work \
             node:lts-buster-slim \
             bash -lc "CI=true npm test -- --watchAll=false"
         '''
@@ -39,7 +40,7 @@ pipeline {
     stage('Deploy') {
       steps {
         sh '''
-          docker build -t react-app-image .
+          docker build -t react-app-image "$HOST_WS"
           docker rm -f react-app 2>/dev/null || true
           docker run -d --name react-app -p 3000:3000 react-app-image
 
