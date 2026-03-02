@@ -3,21 +3,18 @@ pipeline {
 
   environment {
     CI = 'true'
-    DIND_HOST = 'tcp://172.19.0.3:2375'
+    HOST_WS = '/home/dzikri/jenkins_home/workspace/react-app'  // path host (sesuai bind mount)
   }
 
   stages {
     stage('Build') {
       steps {
         sh '''
-          set -e
-          tar -czf - . | \
-          DOCKER_HOST=$DIND_HOST DOCKER_TLS_VERIFY= DOCKER_CERT_PATH= DOCKER_TLS_CERTDIR= \
-          docker run --rm -i \
+          docker run --rm \
             -e CI=true \
-            -w /work \
+            -v "$HOST_WS:/work" -w /work \
             node:lts-buster-slim \
-            bash -lc "mkdir -p /work && tar -xzf - -C /work && npm install"
+            bash -lc "npm install"
         '''
       }
     }
@@ -25,14 +22,11 @@ pipeline {
     stage('Test') {
       steps {
         sh '''
-          set -e
-          tar -czf - . | \
-          DOCKER_HOST=$DIND_HOST DOCKER_TLS_VERIFY= DOCKER_CERT_PATH= DOCKER_TLS_CERTDIR= \
-          docker run --rm -i \
+          docker run --rm \
             -e CI=true \
-            -w /work \
+            -v "$HOST_WS:/work" -w /work \
             node:lts-buster-slim \
-            bash -lc "mkdir -p /work && tar -xzf - -C /work && CI=true npm test -- --watchAll=false"
+            bash -lc "CI=true npm test -- --watchAll=false"
         '''
       }
     }
@@ -48,12 +42,6 @@ pipeline {
     stage('Deploy') {
       steps {
         sh '''
-          set -e
-          export DOCKER_HOST=$DIND_HOST
-          export DOCKER_TLS_VERIFY=
-          export DOCKER_CERT_PATH=
-          export DOCKER_TLS_CERTDIR=
-
           ./jenkins/scripts/deliver.sh
           sleep 60
           ./jenkins/scripts/kill.sh
