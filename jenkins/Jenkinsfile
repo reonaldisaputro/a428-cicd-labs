@@ -1,60 +1,40 @@
 pipeline {
-  agent any
-
-  environment {
-    CI = 'true'
-    HOST_WS = '/home/dzikri/jenkins_home/workspace/react-app'
-  }
-
-  stages {
-    stage('Build') {
-      steps {
-        sh '''
-          docker run --rm \
-            -e CI=true \
-            -v "$HOST_WS:/work" \
-            -w /work \
-            node:lts-buster-slim \
-            npm install
-        '''
-      }
+    agent {
+        docker {
+            image 'node:lts-buster-slim'
+            args '-p 3000:3000'
+        }
     }
 
-    stage('Test') {
-      steps {
-        sh '''
-          docker run --rm \
-            -e CI=true \
-            -v "$HOST_WS:/work" \
-            -w /work \
-            node:lts-buster-slim \
-            npm test -- --watchAll=false
-        '''
-      }
+    environment {
+        CI = 'true'
     }
 
-    stage('Manual Approval') {
-      steps {
-        input message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
-      }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh './jenkins/scripts/test.sh'
+            }
+        }
+
+        stage('Manual Approval') {
+            steps {
+                input message: 'Lanjutkan ke tahap Deploy?'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh './jenkins/scripts/deliver.sh'
+                sh 'sleep 60'
+                sh './jenkins/scripts/kill.sh'
+            }
+        }
     }
-
-    stage('Deploy') {
-      steps {
-        sh '''
-          cd "$WORKSPACE"
-
-          docker build -t react-app-image .
-          docker rm -f react-app 2>/dev/null || true
-          docker run -d --name react-app -p 3000:3000 react-app-image
-
-          sleep 60
-
-          docker stop react-app 2>/dev/null || true
-          docker rm -f react-app 2>/dev/null || true
-          exit 0
-        '''
-      }
-    }
-  }
 }
