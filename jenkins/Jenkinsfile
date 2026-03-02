@@ -1,5 +1,11 @@
 pipeline {
-  agent any
+  agent {
+    docker {
+      image 'node:lts-buster-slim'
+      // port exposure tetap, tapi ingat: publish port dari container agent Jenkins
+      args '-p 3000:3000'
+    }
+  }
 
   environment {
     CI = 'true'
@@ -8,43 +14,33 @@ pipeline {
   stages {
     stage('Build') {
       steps {
-        sh '''
-          docker run --rm \
-            -e CI=true \
-            -v "$PWD:/work" -w /work \
-            node:lts-buster-slim \
-            bash -lc "npm install"
-        '''
+        sh 'npm install'
       }
     }
 
     stage('Test') {
       steps {
-        sh '''
-          docker run --rm \
-            -e CI=true \
-            -v "$PWD:/work" -w /work \
-            node:lts-buster-slim \
-            bash -lc "CI=true npm test -- --watchAll=false"
-        '''
+        sh './jenkins/scripts/test.sh'
       }
     }
 
     stage('Manual Approval') {
       steps {
-        script {
-          input message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
-        }
+        // Kriteria 4: teks wajib seperti ini
+        input message: 'Lanjutkan ke tahap Deploy?'
       }
     }
 
     stage('Deploy') {
       steps {
-        sh '''
-          ./jenkins/scripts/deliver.sh
-          sleep 60
-          ./jenkins/scripts/kill.sh
-        '''
+        // Deploy/jalankan aplikasi
+        sh './jenkins/scripts/deliver.sh'
+
+        // Kriteria 3: jeda 1 menit tanpa input manual
+        sh 'sleep 60'
+
+        // Setelah 1 menit, hentikan aplikasi agar pipeline sukses
+        sh './jenkins/scripts/kill.sh'
       }
     }
   }
