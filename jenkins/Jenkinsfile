@@ -42,7 +42,7 @@ pipeline {
     stage('Deploy') {
       steps {
         sh '''
-          cd "$HOST_WS"
+          cd "$WORKSPACE"
 
           docker build -t react-app-image .
           docker rm -f react-app 2>/dev/null || true
