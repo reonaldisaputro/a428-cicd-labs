@@ -5,13 +5,12 @@ pipeline {
     CI = 'true'
   }
 
-  stages {
     stage('Build') {
       steps {
         sh '''
           docker run --rm \
             -e CI=true \
-            -v "$PWD:/work" -w /work \
+            -v "$WORKSPACE:/work" -w /work \
             node:lts-buster-slim \
             bash -lc "npm install"
         '''
@@ -23,7 +22,7 @@ pipeline {
         sh '''
           docker run --rm \
             -e CI=true \
-            -v "$PWD:/work" -w /work \
+            -v "$WORKSPACE:/work" -w /work \
             node:lts-buster-slim \
             bash -lc "CI=true npm test -- --watchAll=false"
         '''
