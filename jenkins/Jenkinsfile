@@ -11,11 +11,12 @@ pipeline {
       steps {
         sh '''
           env -u DOCKER_TLS_VERIFY -u DOCKER_CERT_PATH -u DOCKER_TLS_CERTDIR \
-          docker run --rm \
+          tar -czf - . | \
+          docker run --rm -i \
             -e CI=true \
-            -v "$PWD:/work" -w /work \
+            -w /work \
             node:lts-buster-slim \
-            bash -lc "npm install"
+            bash -lc "mkdir -p /work && tar -xzf - -C /work && npm install"
         '''
       }
     }
@@ -24,11 +25,12 @@ pipeline {
       steps {
         sh '''
           env -u DOCKER_TLS_VERIFY -u DOCKER_CERT_PATH -u DOCKER_TLS_CERTDIR \
-          docker run --rm \
+          tar -czf - . | \
+          docker run --rm -i \
             -e CI=true \
-            -v "$PWD:/work" -w /work \
+            -w /work \
             node:lts-buster-slim \
-            bash -lc "CI=true npm test -- --watchAll=false"
+            bash -lc "mkdir -p /work && tar -xzf - -C /work && CI=true npm test -- --watchAll=false"
         '''
       }
     }
