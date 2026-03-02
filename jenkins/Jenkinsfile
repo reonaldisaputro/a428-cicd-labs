@@ -13,7 +13,7 @@ pipeline {
           env -u DOCKER_TLS_VERIFY -u DOCKER_CERT_PATH -u DOCKER_TLS_CERTDIR \
           docker run --rm \
             -e CI=true \
-            -v "$PWD:/app" -w /app \
+            -v "$PWD:/work" -w /work \
             node:lts-buster-slim \
             bash -lc "npm install"
         '''
@@ -26,9 +26,9 @@ pipeline {
           env -u DOCKER_TLS_VERIFY -u DOCKER_CERT_PATH -u DOCKER_TLS_CERTDIR \
           docker run --rm \
             -e CI=true \
-            -v "$PWD:/app" -w /app \
+            -v "$PWD:/work" -w /work \
             node:lts-buster-slim \
-            bash -lc "./jenkins/scripts/test.sh"
+            bash -lc "CI=true npm test -- --watchAll=false"
         '''
       }
     }
