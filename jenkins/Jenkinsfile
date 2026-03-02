@@ -1,9 +1,8 @@
 pipeline {
-  agent none
+  agent any
 
   environment {
     CI = 'true'
-
     DOCKER_HOST = 'tcp://172.19.0.3:2375'
     DOCKER_TLS_VERIFY = ''
     DOCKER_CERT_PATH = ''
@@ -11,29 +10,30 @@ pipeline {
 
   stages {
     stage('Build') {
-      agent {
-        docker {
-          image 'node:lts-buster-slim'
-        }
-      }
       steps {
-        sh 'npm install'
+        sh '''
+          docker run --rm \
+            -e CI=true \
+            -v "$PWD:/app" -w /app \
+            node:lts-buster-slim \
+            bash -lc "npm install"
+        '''
       }
     }
 
     stage('Test') {
-      agent {
-        docker {
-          image 'node:lts-buster-slim'
-        }
-      }
       steps {
-        sh './jenkins/scripts/test.sh'
+        sh '''
+          docker run --rm \
+            -e CI=true \
+            -v "$PWD:/app" -w /app \
+            node:lts-buster-slim \
+            bash -lc "./jenkins/scripts/test.sh"
+        '''
       }
     }
 
     stage('Manual Approval') {
-      agent any
       steps {
         script {
           input message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
@@ -42,7 +42,6 @@ pipeline {
     }
 
     stage('Deploy') {
-      agent any
       steps {
         sh './jenkins/scripts/deliver.sh'
         sh 'sleep 60'
