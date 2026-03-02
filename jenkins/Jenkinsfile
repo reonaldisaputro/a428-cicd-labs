@@ -1,29 +1,43 @@
 pipeline {
-  agent none
+  agent any
 
   environment {
     CI = 'true'
-    // Docker-in-Docker untuk DEPLOY saja
-    DOCKER_HOST = 'tcp://172.19.0.3:2375'
+    DIND_HOST = 'tcp://172.19.0.3:2375'
   }
 
   stages {
     stage('Build') {
-      agent { docker { image 'node:lts-buster-slim' } }
       steps {
-        sh 'npm install'
+        sh '''
+          set -e
+          tar -czf - . | \
+          DOCKER_HOST=$DIND_HOST DOCKER_TLS_VERIFY= DOCKER_CERT_PATH= DOCKER_TLS_CERTDIR= \
+          docker run --rm -i \
+            -e CI=true \
+            -w /work \
+            node:lts-buster-slim \
+            bash -lc "mkdir -p /work && tar -xzf - -C /work && npm install"
+        '''
       }
     }
 
     stage('Test') {
-      agent { docker { image 'node:lts-buster-slim' } }
       steps {
-        sh 'CI=true npm test -- --watchAll=false'
+        sh '''
+          set -e
+          tar -czf - . | \
+          DOCKER_HOST=$DIND_HOST DOCKER_TLS_VERIFY= DOCKER_CERT_PATH= DOCKER_TLS_CERTDIR= \
+          docker run --rm -i \
+            -e CI=true \
+            -w /work \
+            node:lts-buster-slim \
+            bash -lc "mkdir -p /work && tar -xzf - -C /work && CI=true npm test -- --watchAll=false"
+        '''
       }
     }
 
     stage('Manual Approval') {
-      agent any
       steps {
         script {
           input message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
@@ -32,11 +46,13 @@ pipeline {
     }
 
     stage('Deploy') {
-      agent any
       steps {
         sh '''
-          # paksa non-TLS agar docker tidak mencoba HTTPS
-          unset DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_TLS_CERTDIR
+          set -e
+          export DOCKER_HOST=$DIND_HOST
+          export DOCKER_TLS_VERIFY=
+          export DOCKER_CERT_PATH=
+          export DOCKER_TLS_CERTDIR=
 
           ./jenkins/scripts/deliver.sh
           sleep 60
